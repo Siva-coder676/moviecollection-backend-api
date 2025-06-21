@@ -24,7 +24,7 @@ app.get('/', (req, res) => {
         </head>
         <body>
             <h1>Hello</h1>
-            <p>Welcome to my website!</p>
+            <p>Welcome to Movie my website!</p>
         </body>
         </html>
     `
