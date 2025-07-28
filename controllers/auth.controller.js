@@ -1,5 +1,5 @@
 const User = require('../models/user.model');
-const { doHash, doHashValidation} = require('../utils/hashing');
+const { doHash, doHashValidation } = require('../utils/hashing');
 const jwt = require('jsonwebtoken');
 const { signupSchema, loginSchema } = require('../middleware/validator');
 
@@ -89,4 +89,11 @@ const Login = async (req, res) => {
    }
 };
 
-module.exports = { Signup, Login };
+const Logout = async (req, res) => {
+   res
+      .clearCookie('Authorization')
+      .status(200)
+      .json({ success: true, message: 'logged out successfully' });
+};
+
+module.exports = { Signup, Login, Logout };
