@@ -2,7 +2,15 @@
 const express = require('express');
 
 const movieRoutes = require('./routes/movie.route');
+
+const authRoutes = require('./routes/auth.route')
 const connectDB = require('./lib/db');
+
+const helmet = require('helmet');
+
+const cors = require('cors');
+
+const cookieParser = require('cookie-parser');
 
 const app = express();
 
@@ -10,6 +18,12 @@ const PORT = 6969;
 
 
 app.use(express.json());
+
+app.use(cors());
+
+app.use(helmet());
+
+app.use(cookieParser());
 
 app.use(express.urlencoded({ extended: true }));
 
@@ -33,6 +47,8 @@ app.get('/', (req, res) => {
 
 
 app.use('/movies', movieRoutes);
+
+app.use('/user', authRoutes);
 
 
 app.listen(PORT, () => {
