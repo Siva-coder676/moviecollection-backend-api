@@ -93,7 +93,11 @@ const Logout = async (req, res) => {
    res
       .clearCookie('Authorization')
       .status(200)
-      .json({ success: true, message: 'logged out successfully' });
+      .json({
+         status: 200,
+         success: true, message: 'Logged out Successfully',
+
+      });
 };
 
 module.exports = { Signup, Login, Logout };
