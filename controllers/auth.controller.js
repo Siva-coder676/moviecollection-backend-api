@@ -1,7 +1,8 @@
 const User = require('../models/user.model');
-const { doHash, doHashValidation } = require('../utils/hashing');
+const { doHash, doHashValidation, hmacProcess } = require('../utils/hashing');
 const jwt = require('jsonwebtoken');
 const { signupSchema, loginSchema } = require('../middleware/validator');
+const {transport}= require('../middleware/send.mail');
 
 const Signup = async (req, res) => {
    const { email, password } = req.body;
@@ -100,4 +101,46 @@ const Logout = async (req, res) => {
       });
 };
 
-module.exports = { Signup, Login, Logout };
+const sendVerification = async (req, res) => {
+    const { email } = req.body;
+    try {
+        const existingUser = await User.findOne({ email }).select('+password');
+        if (!existingUser) {
+            return res
+                .status(404)
+                .json({ success: false, message: 'User does not exist!' });
+        }
+
+        if (existingUser.verified) {
+            return res
+                .status(400)
+                .json({ success: false, message: 'You are already verified!' });
+        }
+
+        const codeValue = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+        
+        
+      
+        let info = await transport.sendMail({
+            from: process.env.NODE_CODE_SENDING_EMAIL_ADDRESS,
+            to: existingUser.email,
+            subject: 'Verification Code',
+            html: `<h1>${codeValue}</h1>`
+        });
+
+        if (info.accepted[0] === existingUser.email) {
+            const hashedCodeValue = hmacProcess(codeValue, process.env.HMAC_VERIFICATION_CODE_SECRET);
+            existingUser.verificationCode = hashedCodeValue;
+            existingUser.verificationCodeValidation = new Date();
+            await existingUser.save();
+            return res.status(200).json({ success: true, message: "Code Sent!" }); // Fixed: 'success' not 'sucess'
+        }
+        return res.status(400).json({ success: false, message: "Code Send Failed!" }); // Fixed: 'success' not 'sucess'
+        
+    } catch (error) {
+        console.log('Error in sendVerification:', error);
+        return res.status(500).json({ success: false, message: "Internal server error" });
+    }
+}
+
+module.exports = { Signup, Login, Logout,sendVerification };
