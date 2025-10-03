@@ -103,57 +103,75 @@ const Logout = async (req, res) => {
 
 const sendVerification = async (req, res) => {
     const { email } = req.body;
+    
+    console.log('=== SEND VERIFICATION STARTED ===');
+    console.log('Requested email:', email);
+    
     try {
         const existingUser = await User.findOne({ email }).select('+password');
+        
         if (!existingUser) {
-            return res
-                .status(404)
-                .json({ success: false, message: 'User does not exist!' });
+            console.log('❌ User not found');
+            return res.status(404).json({ success: false, message: 'User does not exist!' });
         }
+        
+        console.log('✅ User found:', existingUser.email);
 
         if (existingUser.verified) {
-            return res
-                .status(400)
-                .json({ success: false, message: 'You are already verified!' });
+            console.log('❌ User already verified');
+            return res.status(400).json({ success: false, message: 'You are already verified!' });
         }
 
         const codeValue = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
-        
-        // Hash and save code BEFORE sending email
-        const hashedCodeValue = hmacProcess(codeValue, process.env.HMAC_VERIFICATION_CODE_SECRET);
-        existingUser.verificationCode = hashedCodeValue;
-        existingUser.verificationCodeValidation = new Date();
-        await existingUser.save();
+        console.log('Generated code:', codeValue);
+        console.log('Sending to:', existingUser.email);
+        console.log('From:', process.env.NODE_CODE_SENDING_EMAIL_ADDRESS);
 
-        // Send response immediately (don't wait for email)
-        res.status(200).json({ 
-            success: true, 
-            message: "Verification code is being sent to your email!" 
-        });
-
-        // Send email asynchronously in the background
-        transport.sendMail({
+        // Try sending
+        const info = await transport.sendMail({
             from: process.env.NODE_CODE_SENDING_EMAIL_ADDRESS,
             to: existingUser.email,
-            subject: 'Verification Code',
-            html: `
-                <div style="font-family: Arial, sans-serif; padding: 20px;">
-                    <h2>Your Verification Code</h2>
-                    <p>Use this code to verify your account:</p>
-                    <h1 style="color: #4CAF50; letter-spacing: 5px;">${codeValue}</h1>
-                    <p>This code will expire in 10 minutes.</p>
-                </div>
-            `
-        }).catch(error => {
-            // Log email errors but don't crash the server
-            console.error('Email sending failed:', error);
-            // Optional: You could add this to a retry queue or send to error monitoring service
+            subject: 'Your Verification Code',
+            html: `<h1>Your Code: ${codeValue}</h1>`,
+            text: `Your code: ${codeValue}`
+        });
+
+        console.log('=== EMAIL SEND RESULT ===');
+        console.log('MessageId:', info.messageId);
+        console.log('Accepted:', info.accepted);
+        console.log('Rejected:', info.rejected);
+        console.log('Response:', info.response);
+        console.log('Envelope:', info.envelope);
+
+        // Save to DB
+        const hashedCodeValue = hmacProcess(codeValue, process.env.HMAC_VERIFICATION_CODE_SECRET);
+        existingUser.verificationCode = hashedCodeValue;
+        existingUser.verificationCodeValidation = Date.now();
+        await existingUser.save();
+        
+        console.log('✅ Code saved to database');
+        console.log('=== SEND VERIFICATION COMPLETED ===');
+
+        return res.status(200).json({ 
+            success: true, 
+            message: "Code sent!",
+            debug: {
+                messageId: info.messageId,
+                accepted: info.accepted
+            }
         });
         
     } catch (error) {
-        console.log('Error in sendVerification:', error);
-        return res.status(500).json({ success: false, message: "Internal server error" });
+        console.error('=== ERROR ===');
+        console.error('Error:', error);
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+        return res.status(500).json({ 
+            success: false, 
+            message: "Internal server error",
+            error: error.message 
+        });
     }
-}
+};
 
 module.exports = { Signup, Login, Logout,sendVerification };
