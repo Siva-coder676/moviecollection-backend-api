@@ -1,7 +1,9 @@
 const nodemailer = require('nodemailer');
 
 const transport = nodemailer.createTransport({
-    service: 'gmail', // Use Gmail's built-in service
+    service: 'gmail',
+     port: 465,
+  secure: true,  // Use Gmail's built-in service
     auth: {
         user: process.env.NODE_CODE_SENDING_EMAIL_ADDRESS,
         pass: process.env.NODE_CODE_SENDING_EMAIL_PASSWORD.replace(/\s/g, '') // Remove any spaces
